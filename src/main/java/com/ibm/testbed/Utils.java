@@ -153,11 +153,11 @@ public class Utils
                 recordCount++;
                 if (recordCount >= batchSize) {
                     recordCount = 0;
-                    insertStatement.executeUpdate();
+                    insertStatement.executeBatch();
                 }
             }
             if (recordCount > 0) {
-                insertStatement.executeUpdate();
+                insertStatement.executeBatch();
             }
         }
     }

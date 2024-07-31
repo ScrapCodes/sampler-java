@@ -17,11 +17,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 
-public class SQLiteImporter
+public class SqliteImporter
         implements Importer
 {
     private static final Logger logger = LogManager.getLogger();
 
+    @Override
     public Connection getConnection(String dbFilePath)
             throws SamplerImportException
     {
