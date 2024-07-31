@@ -5,8 +5,6 @@ import com.ibm.benchmark.JoinQueryGenerator;
 import com.ibm.testbed.exporter.JdbcPrestoExporter;
 import com.ibm.testbed.tables.TPCHLineitem;
 import org.apache.commons.io.FileUtils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
@@ -38,25 +36,27 @@ import static org.junit.Assert.assertTrue;
 public abstract class AbstractImporterTest
 { // It is far from ideal to use junit framework for benchmarking
     // But this is our time marking solution. Need to make a proper benchmark suite.
-    static String path;
+    String path;
 
-    static {
+    long expectedCount;
+
+    String dbPath;
+
+    public AbstractImporterTest()
+    {
         try {
             path = Files.createTempDirectory("presto_test_export").toFile().getAbsolutePath();
+            dbPath = String.format("/tmp/test_%s_%s.db", "n", getDbType());
+            exportData();
         }
-        catch (IOException e) {
+        catch (IOException | SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    static long expectedCount;
-
-    String dbPath = String.format("/tmp/test_%s.db", getDbType());
-
     abstract String getDbType();
 
-    @BeforeClass
-    public static void exportData()
+    public void exportData()
             throws SQLException
     {
         Stopwatch sw = Stopwatch.createUnstarted();
@@ -181,15 +181,8 @@ public abstract class AbstractImporterTest
             throws IOException
     {
         // cleanup each test
+        System.out.println("\nCleaning up! : " + path);
+        FileUtils.deleteDirectory(new File(path));
         Files.deleteIfExists(Path.of(dbPath));
-    }
-
-    @AfterClass
-    public static void cleanup()
-            throws IOException
-    {
-        // Find a way this is run only once and not for every subclass of test.
-//        System.out.println("\nCleaning up! : " + path);
-//        FileUtils.deleteDirectory(new File(path));
     }
 }
