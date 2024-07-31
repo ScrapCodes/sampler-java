@@ -38,7 +38,7 @@ import static org.junit.Assert.assertTrue;
 public abstract class AbstractImporterTest
 { // It is far from ideal to use junit framework for benchmarking
     // But this is our time marking solution. Need to make a proper benchmark suite.
-    static final String path;
+    static String path;
 
     static {
         try {
@@ -63,7 +63,7 @@ public abstract class AbstractImporterTest
         sw.start();
         JdbcPrestoExporter j = new JdbcPrestoExporter();
         Connection connection = j.getConnectionWithDefaults();
-        expectedCount = j.exportTable(connection, path, "CSV", 20);
+        expectedCount = j.exportTable(connection, path, "CSV", 2);
         sw.stop();
         System.out.printf("\nTime to export %d records as CSV %s : %dms", expectedCount, path, sw.elapsed().toMillis());
     }
@@ -140,7 +140,7 @@ public abstract class AbstractImporterTest
                     long count = 0;
                     try {
                         Connection connection = DriverManager.getConnection(String.format("jdbc:%s:%s", getDbType(), dbPath));
-                        for (int j : IntStream.range(0, 10).toArray()) {
+                        for (int j : IntStream.range(0, 20).toArray()) {
                             String query = JoinQueryGenerator.generateRandomLikeQuery(TPCHLineitem.class);
                             Stopwatch sw = Stopwatch.createUnstarted();
                             sw.start();
@@ -188,6 +188,8 @@ public abstract class AbstractImporterTest
     public static void cleanup()
             throws IOException
     {
-        FileUtils.deleteDirectory(new File(path));
+        // Find a way this is run only once and not for every subclass of test.
+//        System.out.println("\nCleaning up! : " + path);
+//        FileUtils.deleteDirectory(new File(path));
     }
 }
