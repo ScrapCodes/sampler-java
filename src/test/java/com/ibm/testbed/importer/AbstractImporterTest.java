@@ -1,7 +1,7 @@
 package com.ibm.testbed.importer;
 
 import com.google.common.base.Stopwatch;
-import com.ibm.benchmark.JoinQueryGenerator;
+import com.ibm.benchmark.generator.JoinQueryGenerator;
 import com.ibm.testbed.exporter.JdbcPrestoExporter;
 import com.ibm.testbed.tables.TPCHLineitem;
 import org.apache.commons.io.FileUtils;
@@ -34,8 +34,7 @@ import static org.junit.Assert.assertTrue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public abstract class AbstractImporterTest
-{ // It is far from ideal to use junit framework for benchmarking
-    // But this is our time marking solution. Need to make a proper benchmark suite.
+{
     String path;
 
     long expectedCount;
@@ -92,89 +91,6 @@ public abstract class AbstractImporterTest
         }
     }
 
-    @Test
-    public void testBenchmarkALikeQueries()
-            throws SQLException
-    {
-        List<Long> runTimes = new ArrayList<>();
-        int zeroCount = 0;
-        long sumRunTime = 0L;
-        Stopwatch sw = Stopwatch.createUnstarted();
-        String dbUrl = String.format("jdbc:%s:%s", getDbType(), dbPath);
-        System.out.println("\nRunning like queries benchmark for Db with url : " + dbUrl);
-        try (Connection connection = DriverManager.getConnection(dbUrl)) {
-            for (int i : IntStream.range(1, 100).toArray()) {
-                String query = JoinQueryGenerator.generateRandomLikeQuery(TPCHLineitem.class);
-                sw.reset();
-                sw.start();
-                PreparedStatement preparedStatement = connection.prepareStatement(query);
-                ResultSet resultSet = preparedStatement.executeQuery();
-                sw.stop();
-                if (resultSet.next()) {
-                    long count = resultSet.getLong(1);
-                    if (count == 0) {
-                        zeroCount++;
-                    }
-                    sumRunTime += count;
-                }
-                runTimes.add(sw.elapsed().toMillis());
-            }
-        }
-        System.out.printf("\nAverage running time: %dms", runTimes.stream().reduce(0L, Long::sum) / (long) runTimes.size());
-        System.out.printf("\nAverage count sum : %d", sumRunTime / (long) runTimes.size());
-        System.out.printf("\n No. of queries with zero count : %d", zeroCount);
-    }
-
-    @Test
-    public void testBenchmarkBLikeQueriesConcurrent()
-            throws Exception
-    {
-        Queue<Long> runTimes = new ConcurrentLinkedQueue<Long>();
-        List<Callable<Long>> callableTasks = new ArrayList<>();
-        long sumRunTime = 0L;
-        int concurrencyLevel = 4;
-        try (ExecutorService executor = Executors.newFixedThreadPool(concurrencyLevel)) {
-            for (int i : IntStream.range(0, concurrencyLevel).toArray()) {
-                Callable<Long> callableTask = () -> {
-                    long countSum = 0;
-                    long count = 0;
-                    try {
-                        Connection connection = DriverManager.getConnection(String.format("jdbc:%s:%s", getDbType(), dbPath));
-                        for (int j : IntStream.range(0, 20).toArray()) {
-                            String query = JoinQueryGenerator.generateRandomLikeQuery(TPCHLineitem.class);
-                            Stopwatch sw = Stopwatch.createUnstarted();
-                            sw.start();
-                            PreparedStatement preparedStatement = connection.prepareStatement(query);
-                            ResultSet resultSet = preparedStatement.executeQuery();
-                            sw.stop();
-                            if (resultSet.next()) {
-                                countSum += resultSet.getLong(1);
-                                count++;
-                            }
-                            runTimes.add(sw.elapsed().toMillis());
-                        }
-                    }
-                    catch (Exception e) {
-                        e.printStackTrace(); // TODO not ideal, but okay for now.
-                    }
-                    return countSum / count;
-                };
-                callableTasks.add(callableTask);
-            }
-            List<Future<Long>> futures = executor.invokeAll(callableTasks);
-            sumRunTime = futures.stream().map(s -> {
-                try {
-                    return s.get();
-                }
-                catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
-            }).reduce(0L, Long::sum);
-        }
-        System.out.printf("\nAverage running time for concurrent queries with concurrency: %d is : %dms", concurrencyLevel,
-                runTimes.stream().reduce(0L, Long::sum) / (long) runTimes.size());
-        System.out.printf("\nAverage count sum for concurrent queries with concurrency: %d is : %d", concurrencyLevel, sumRunTime / concurrencyLevel);
-    }
 
     @Test
     public void zCleanup()

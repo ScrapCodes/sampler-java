@@ -1,17 +1,21 @@
-package com.ibm.benchmark;
+package com.ibm.benchmark.generator;
 
 import com.google.common.base.Preconditions;
+import com.ibm.benchmark.Utils;
 
 import java.lang.reflect.Field;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public class JoinQueryGenerator
+public abstract class AbstractQueryGenerator
+        implements QueryGenerator
 {
-    private static final String LIKE_QUERY_TEMPLATE1 = "SELECT count(col1) from tableName where col1 LIKE '%%%s%%' ";
-    private static final String LIKE_EQUALITY_TEMPLATE = "SELECT count(col1) from tableName where col1 LIKE '%%%s%%' AND col2 = 'val2' ";
-    private static final List<String> LIKE_QUERY_TEMPLATES = List.of(LIKE_QUERY_TEMPLATE1, LIKE_EQUALITY_TEMPLATE);
+
+    @Override
+    public <T> String generateQuery(Class<T> tableType, String col1, String col2)
+    {
+        return generateQuery(tableType, getQueryTemplates(), col1, col2);
+    }
 
     /*
      * possible values of comment
@@ -26,7 +30,7 @@ public class JoinQueryGenerator
      *    8413 | furiously
      *   (6 rows)
      */
-    private static final Map<String, List<String>> ColNameVsPossibleValues = Map.of(
+    private final Map<String, List<String>> ColNameVsPossibleValues = Map.of(
             "returnflag", List.of("R", "A", "N"),
             "linestatus", List.of("O", "F"),
             "shipinstruct", List.of("NONE", "COLLECT COD", "DELIVER IN PERSON", "TAKE BACK RETURN"),
@@ -34,13 +38,13 @@ public class JoinQueryGenerator
             "comment", List.of("  carefully ", "  furiously ")
     );
 
-    static int getRandomInt(int minVal, int maxVal)
+    int getRandomInt(int minVal, int maxVal)
     {
         Preconditions.checkArgument(minVal < maxVal && minVal >= 0);
         return (int) ((Math.random() * (maxVal - minVal)) + minVal);
     }
 
-    static String getRandomSubstring(String s)
+    String getRandomSubstring(String s)
     {
         int len = s.length();
         if (len <= 1) {
@@ -51,21 +55,28 @@ public class JoinQueryGenerator
         return s.substring(startIndex, endIndex);
     }
 
-    public static <T> String generateRandomLikeQuery(Class<T> tableType)
+    protected <T> String generateRandomQuery(Class<T> tableType, List<String> queryTemplates)
     {
         List<Field> listOfVarcharColumns = Utils.getListOfStringColumns(tableType);
         Preconditions.checkArgument(listOfVarcharColumns.size() > 1);
+
         // Pick a template for generating like query.
         String col1 = listOfVarcharColumns.get(getRandomInt(0, listOfVarcharColumns.size())).getName();
         String col2 = listOfVarcharColumns.get(getRandomInt(0, listOfVarcharColumns.size())).getName();
-        String templateQuery = LIKE_QUERY_TEMPLATES.get(getRandomInt(0, LIKE_QUERY_TEMPLATES.size()));
+        return generateQuery(tableType, queryTemplates, col1, col2);
+    }
+
+    protected <T> String generateQuery(Class<T> tableType, List<String> queryTemplates, String col1, String col2)
+    {
+        String templateQuery = queryTemplates.get(getRandomInt(0, queryTemplates.size()));
         templateQuery = templateQuery.replace("col1", col1);
         String tableName = tableType.getSimpleName();
         templateQuery = templateQuery.replace("tableName", tableName);
 
         // get value for equality condition.
         List<String> strings2 = ColNameVsPossibleValues.get(col2);
-        templateQuery = templateQuery.replace("col2", col2).replace("val2", strings2.get(getRandomInt(0, strings2.size())));
+        templateQuery = templateQuery.replace("col2", col2)
+                .replace("val2", strings2.get(getRandomInt(0, strings2.size())));
 
         // generate like string for the columns.
         List<String> strings1 = ColNameVsPossibleValues.get(col1);

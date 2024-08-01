@@ -1,5 +1,7 @@
 package com.ibm.benchmark;
 
+import com.ibm.benchmark.generator.JoinQueryGenerator;
+import com.ibm.benchmark.generator.QueryGenerator;
 import com.ibm.testbed.importer.DuckDbImporter;
 import com.ibm.testbed.importer.SqliteImporter;
 import com.ibm.testbed.importer.SamplerImportException;
@@ -32,20 +34,22 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * This is an evaluation of JMH framework is a good candidate for benchmarking or not.
- * Somehow JMH did not meet the needs for benchmark.
+ * *Somehow JMH did not meet the needs for benchmark.*
  * Actual benchmarks are written in Junit tests for now, eventually, we will have something standalone.
  */
 @Warmup(iterations = 1, time = 5, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 5, time = 5, timeUnit = TimeUnit.SECONDS)
 public class JoinBenchmark
 {
-//    @Benchmark
-//    @BenchmarkMode({Mode.AverageTime, Mode.Throughput})
-//    @OutputTimeUnit(TimeUnit.MILLISECONDS)
-//    public String generateQueries()
-//    {
-//        return JoinQueryGenerator.generateRandomLikeQuery(TPCHLineitem.class);
-//    }
+    static QueryGenerator qg = new JoinQueryGenerator();
+
+    @Benchmark
+    @BenchmarkMode({Mode.AverageTime, Mode.Throughput})
+    @OutputTimeUnit(TimeUnit.MILLISECONDS)
+    public String generateQueries()
+    {
+        return qg.generateRandomQuery(TPCHLineitem.class);
+    }
 
     @State(Scope.Benchmark)
     public static class PrestoExportedData
@@ -107,7 +111,7 @@ public class JoinBenchmark
         @Setup(Level.Invocation)
         public void setup()
         {
-            query = JoinQueryGenerator.generateRandomLikeQuery(TPCHLineitem.class);
+            query = qg.generateRandomQuery(TPCHLineitem.class);
         }
     }
 
@@ -145,7 +149,7 @@ public class JoinBenchmark
         @Setup(Level.Invocation)
         public void setup()
         {
-            query = JoinQueryGenerator.generateRandomLikeQuery(TPCHLineitem.class);
+            query = qg.generateRandomQuery(TPCHLineitem.class);
         }
     }
 
