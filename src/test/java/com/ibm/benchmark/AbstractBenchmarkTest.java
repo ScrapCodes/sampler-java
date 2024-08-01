@@ -1,5 +1,6 @@
 package com.ibm.benchmark;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import com.ibm.benchmark.generator.JoinQueryGenerator;
 import com.ibm.testbed.exporter.JdbcPrestoExporter;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.Callable;
@@ -40,6 +42,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
+import static com.google.common.math.Quantiles.percentiles;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -166,8 +169,11 @@ public abstract class AbstractBenchmarkTest
                 runTimes.add(sw.elapsed().toMillis());
             }
         }
-        logger.info("DbType: {} , Benchmark: {}, Concurrent: false, Average query running time: {}ms",
-                dbType, benchmarkName(), runTimes.stream().reduce(0L, Long::sum) / (long) runTimes.size());
+        Map<Integer, Double> nPercentiles =
+                percentiles().indexes(25, 50, 99).compute(runTimes);
+        logger.info("DbType: {} , Benchmark: {}, Concurrent: false, Average query running time: {}ms, n-percentiles: {}",
+                dbType, benchmarkName(), runTimes.stream().reduce(0L, Long::sum) / (long) runTimes.size(),
+                convertWithGuava(nPercentiles));
         logger.info("DbType: {} , Benchmark: {}, Concurrent: false, Average count sum : {}", dbType, benchmarkName(),
                 sumRunTime / (long) runTimes.size());
         logger.info("DbType: {} , Benchmark: {}, Concurrent: false, No. of queries with zero count : {}", dbType,
@@ -220,10 +226,19 @@ public abstract class AbstractBenchmarkTest
                 }
             }).reduce(0L, Long::sum);
         }
-        logger.info("DbType: {} , Benchmark: {}, Concurrency: {} Average running time for a query : {}ms", dbType, benchmarkName(),
-                concurrencyLevel, runTimes.stream().reduce(0L, Long::sum) / (long) runTimes.size());
-        logger.info("DbType: {} , Benchmark: {}, Concurrency: {} Average of selected records for a query", dbType, benchmarkName(),
-                concurrencyLevel, sumRunTime / concurrencyLevel);
+        Map<Integer, Double> nPercentiles =
+                percentiles().indexes(25, 50, 99).compute(runTimes);
+        logger.info("DbType: {} , Benchmark: {}, Concurrency: 4 Average running time for a query : {}ms," +
+                        " n-percentiles: {}", dbType, benchmarkName(),
+                runTimes.stream().reduce(0L, Long::sum) / (long) runTimes.size(),
+                convertWithGuava(nPercentiles));
+        logger.info("DbType: {} , Benchmark: {}, Concurrency: 4 Average of selected records for a query", dbType, benchmarkName()
+                , sumRunTime / concurrencyLevel);
+    }
+
+    public String convertWithGuava(Map<Integer, ?> map)
+    {
+        return Joiner.on(",").withKeyValueSeparator("=").join(map);
     }
 
     @Test

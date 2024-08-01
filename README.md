@@ -10,16 +10,15 @@
 2. A 2% sample was selected at random using Bernoulli sampling of `lineitem` table with sf `SF10`, it has approximately 1 million records.
 3. Each benchmark was run in sequential as well as concurrent way. Where the concurrency count is 4 on a Baremetal system with 20 Virtual cores, 64GB memory and 1TB NVMe.
 
-
 ## Results
 
-| Benchmark Name                     | sqlite          | duckdb          | presto_export | mysql | presto_import |
-|------------------------------------|-----------------|-----------------|---------------|-------|---------------|
-| import_1M_records (119995)         | 15946ms         | 2753ms          | 6090ms        |       |               |
-| count_distinct_query               | 589ms           | 5ms             |               |       |               |
-| count_distinct_query_concurrency_4 | 667ms           | 20ms            |               |       |               |
-| is_null_query                      | 59ms            | 0ms (0 records) |               |       |               |
-| is_null_query_concurrency_4        | 68ms            | 0ms (0 records) |               |       |               |
-| join_like_query                    | 98ms            | 3ms             |               |       |               |
-| join_like_query_concurrency_4      | 100ms           | 7ms             |               |       |               |
-| Database size                      | 145924096 bytes | 36712448 bytes  | 236 Mb        |       |               |
+| Benchmark Name                     | sqlite                              | duckdb                                 | presto_export | mysql | presto_import |
+|------------------------------------|-------------------------------------|----------------------------------------|---------------|-------|---------------|
+| import_1M_records (119995)         | 15946ms                             | 2753ms                                 | 6090ms        |       |               |
+| count_distinct_query               | 589ms (25=83.5,50=100.0,99=2327.5)  | 5ms (25=2.0,50=3.0,99=33.04)           | ?             |       |               |
+| count_distinct_query_concurrency_4 | 667ms (25=90.75,50=109.5,99=2850.0) | 20ms (25=4.75,50=8.0,99=90.89)         | ?             |       |               |
+| is_null_query (0 records selected) | 59ms (25=54.0,50=59.0,99=65.02)     | 0ms (25=0.0,50=0.0,99=0.0)             |               |       |               |
+| is_null_query_concurrency_4        | 68ms (25=58.0,50=62.0,99=70.0)      | 0ms (25=0.0,50=0.0,99=0.0)             |               |       |               |
+| join_like_query                    | 98ms  (25=83.5,50=90.0,99=141.08)   | 3ms     (25=2.0,50=3.0,99=10.0)        |               |       |               |
+| join_like_query_concurrency_4      | 100ms (25=91.0,50=97.0,99=141.68)   | 7ms           (25=4.0,50=6.0,99=20.84) |               |       |               |
+| Database size                      | 145924096 bytes                     | 36712448 bytes                         | 236 Mb        |       |               |
