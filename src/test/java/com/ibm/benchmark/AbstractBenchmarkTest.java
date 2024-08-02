@@ -150,7 +150,7 @@ public abstract class AbstractBenchmarkTest
         long sumRunTime = 0L;
         Stopwatch sw = Stopwatch.createUnstarted();
         String dbUrl = String.format("jdbc:%s:%s", dbType, dbPath);
-        logger.info("DbType: {} , Benchmark: {}, Running like queries benchmark for Db with url : {} ", dbType, benchmarkName(), dbUrl);
+        logger.info("DbType: {} , Benchmark: {}, Db with url : {} ", dbType, benchmarkName(), dbUrl);
         try (Connection connection = DriverManager.getConnection(dbUrl)) {
             for (int i : IntStream.range(1, 100).toArray()) {
                 String query = generateQuery();
@@ -228,15 +228,14 @@ public abstract class AbstractBenchmarkTest
         }
         Map<Integer, Double> nPercentiles =
                 percentiles().indexes(25, 50, 99).compute(runTimes);
-        logger.info("DbType: {} , Benchmark: {}, Concurrency: 4 Average running time for a query : {}ms," +
-                        " n-percentiles: {}", dbType, benchmarkName(),
-                runTimes.stream().reduce(0L, Long::sum) / (long) runTimes.size(),
+        logger.info("DbType: {} , Benchmark: {}, Concurrency: {} Average running time for a query : {}ms, n-percentiles: {}", dbType,
+                benchmarkName(), concurrencyLevel, runTimes.stream().reduce(0L, Long::sum) / (long) runTimes.size(),
                 convertWithGuava(nPercentiles));
-        logger.info("DbType: {} , Benchmark: {}, Concurrency: 4 Average of selected records for a query", dbType, benchmarkName()
-                , sumRunTime / concurrencyLevel);
+        logger.info("DbType: {} , Benchmark: {}, Concurrency: {} Average of selected records for a query", dbType, benchmarkName(),
+                concurrencyLevel, sumRunTime / concurrencyLevel);
     }
 
-    public String convertWithGuava(Map<Integer, ?> map)
+    private String convertWithGuava(Map<Integer, ?> map)
     {
         return Joiner.on(",").withKeyValueSeparator("=").join(map);
     }
