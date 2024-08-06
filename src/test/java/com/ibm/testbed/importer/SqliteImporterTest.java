@@ -11,17 +11,15 @@ public class SqliteImporterTest
         extends AbstractImporterTest
 {
 
-    @Test
-    public void testAImportFile()
-            throws SQLException, SamplerImportException
+    @Override
+    protected String getDbType()
     {
-        SqliteImporter sqliteImporter = new SqliteImporter();
-        importData(sqliteImporter, this.getDbType());
+        return "sqlite";
     }
 
     @Override
-    String getDbType()
+    protected String exportFormat()
     {
-        return "sqlite";
+        return "CSV";
     }
 }

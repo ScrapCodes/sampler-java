@@ -18,22 +18,10 @@ import java.sql.Statement;
 import java.util.List;
 
 public class DuckDbImporter
+        extends JdbcBasedImporter
         implements Importer
 {
     private static final Logger logger = LogManager.getLogger();
-
-    @Override
-    public Connection getConnection(String dbFilePath)
-            throws SamplerImportException
-    {
-        String url = "jdbc:duckdb:" + dbFilePath;
-        try {
-            return DriverManager.getConnection(url);
-        }
-        catch (Exception e) {
-            throw new SamplerImportException(String.format("Error while creating connection : %s", url), e);
-        }
-    }
 
     @Override
     public void importFile(Connection conn, String path, String format, String tableName)

@@ -1,5 +1,6 @@
 package com.ibm.testbed.importer;
 
+import com.google.common.base.Preconditions;
 import com.ibm.testbed.Utils;
 import com.ibm.testbed.tables.TPCHLineitem;
 import com.opencsv.bean.CsvToBeanBuilder;
@@ -38,7 +39,9 @@ public class JdbcBasedImporter
     @Override
     public void importFile(Connection conn, String path, String format, String tableName)
             throws SamplerImportException
-    { // TODO remove duplicate code from SqliteImporter.
+    {
+        Preconditions.checkArgument(format.equalsIgnoreCase("csv"), "Only CSV format is supported for import.");
+
         try {
             Statement createStmt = conn.createStatement();
             createStmt.execute(Utils.createTable(tableName, false));

@@ -36,4 +36,4 @@ Following results with 20% sample.
 | is_null_query_concurrency_4        | 720ms (25=661.0,50=715.0,99=863.1)       | 0ms (25=0.0,50=0.0,99=0.0)           |               |       |               |
 | join_like_query                    | 1043ms  (25=887.0,50=996.0,99=1475.48)   | 20ms (25=12.0,50=14.0,99=50.02)      |               |       |               |
 | join_like_query_concurrency_4      | 1090ms (25=926.75,50=1072.0,99=1482.25)  | 107ms (25=64.75,50=85.0,99=281.99)   |               |       |               |
-| Database size                      | 1469136896 bytes                         | 361246720 bytes                      | 236 Mb        |       |               |
+| Database size                      | 1469136896 bytes                         | 361246720 bytes                      | 2.3 G         |       |               |

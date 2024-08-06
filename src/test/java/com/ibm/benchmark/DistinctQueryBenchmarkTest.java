@@ -1,7 +1,6 @@
 package com.ibm.benchmark;
 
 import com.ibm.benchmark.generator.DistinctQueryGenerator;
-import com.ibm.benchmark.generator.JoinQueryGenerator;
 import com.ibm.benchmark.generator.QueryGenerator;
 import com.ibm.testbed.tables.TPCHLineitem;
 import org.junit.FixMethodOrder;
@@ -13,9 +12,9 @@ public class DistinctQueryBenchmarkTest
 {
     QueryGenerator queryGenerator = new DistinctQueryGenerator();
 
-    public DistinctQueryBenchmarkTest(String dbType, String dbPath)
+    public DistinctQueryBenchmarkTest(String dbType, String dbPath, String format)
     {
-        super(dbType, dbPath);
+        super(dbType, dbPath, format);
     }
 
     @Override

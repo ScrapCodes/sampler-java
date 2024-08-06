@@ -10,18 +10,15 @@ import java.sql.SQLException;
 public class DuckDbImporterTest
         extends AbstractImporterTest
 {
-
-    @Test
-    public void testAImportFile()
-            throws SQLException, SamplerImportException
+    @Override
+    protected String getDbType()
     {
-        DuckDbImporter duckDbImporter = new DuckDbImporter();
-        importData(duckDbImporter, this.getDbType());
+        return "duckdb";
     }
 
     @Override
-    String getDbType()
+    protected String exportFormat()
     {
-        return "duckdb";
+        return "CSV";
     }
 }
