@@ -14,16 +14,16 @@
 
 Results with 2% Sample.
 
-| Benchmark Name                     | sqlite                              | duckdb                         | Prestodb                              | presto_export | mysql | presto_import |
+| Benchmark Name                     | sqlite                              | duckdb                         | Prestodb Native (parquet)             | presto_export | mysql | presto_import |
 |------------------------------------|-------------------------------------|--------------------------------|---------------------------------------|---------------|-------|---------------|
 | import_1M_records (1199495)        | 15946ms                             | 2753ms                         | 322ms                                 | 6090ms        |       |               |
 | count_distinct_query               | 589ms (25=83.5,50=100.0,99=2327.5)  | 5ms (25=2.0,50=3.0,99=33.04)   | 182ms (25=82.0,50=147.0,99=592.16)    | ?             |       |               |
 | count_distinct_query_concurrency_4 | 667ms (25=90.75,50=109.5,99=2850.0) | 20ms (25=4.75,50=8.0,99=90.89) | 323ms (25=111.75,50=229.0,99=1063.15) | ?             |       |               |
-| is_null_query (0 records selected) | 59ms (25=54.0,50=59.0,99=65.02)     | 0ms (25=0.0,50=0.0,99=0.0)     | ?                                     |               |       |               |
-| is_null_query_concurrency_4        | 68ms (25=58.0,50=62.0,99=70.0)      | 0ms (25=0.0,50=0.0,99=0.0)     | ?                                     |               |       |               |
-| join_like_query                    | 98ms  (25=83.5,50=90.0,99=141.08)   | 3ms (25=2.0,50=3.0,99=10.0)    | ?                                     |               |       |               |
-| join_like_query_concurrency_4      | 100ms (25=91.0,50=97.0,99=141.68)   | 7ms (25=4.0,50=6.0,99=20.84)   | ?                                     |               |       |               |
-| Database size                      | 145924096 bytes                     | 36712448 bytes                 | ? bytes                               | 236 Mb        |       |               |
+| is_null_query (0 records selected) | 59ms (25=54.0,50=59.0,99=65.02)     | 0ms (25=0.0,50=0.0,99=0.0)     | 81ms  (25=45.0,50=48.0,99=136.04)     |               |       |               |
+| is_null_query_concurrency_4        | 68ms (25=58.0,50=62.0,99=70.0)      | 0ms (25=0.0,50=0.0,99=0.0)     | 66ms  (25=62.0,50=65.0,99=88.03)      |               |       |               |
+| join_like_query                    | 98ms  (25=83.5,50=90.0,99=141.08)   | 3ms (25=2.0,50=3.0,99=10.0)    | 120ms (25=58.0,50=143.0,99=261.04)    |               |       |               |
+| join_like_query_concurrency_4      | 100ms (25=91.0,50=97.0,99=141.68)   | 7ms (25=4.0,50=6.0,99=20.84)   | 141ms (25=81.0,50=94.0,99=443.17)     |               |       |               |
+| Database size                      | 145924096 bytes                     | 36712448 bytes                 | N/A                                   | 236 Mb        |       |               |
 
 Following results with 20% sample.
 

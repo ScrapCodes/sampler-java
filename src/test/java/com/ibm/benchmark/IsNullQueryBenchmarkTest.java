@@ -21,7 +21,7 @@ public class IsNullQueryBenchmarkTest
     @Override
     String generateQuery()
     {
-        return queryGenerator.generateQuery(TPCHLineitem.class);
+        return queryGenerator.generateQuery(TPCHLineitem.class).replace(TPCHLineitem.class.getSimpleName(), tableName());
     }
 
     @Override

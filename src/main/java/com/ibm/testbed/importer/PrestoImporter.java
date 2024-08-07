@@ -24,7 +24,7 @@ public class PrestoImporter
             Properties properties = new Properties();
             properties.setProperty("user", "presto");
             properties.setProperty("password", "");
-            properties.setProperty("SSL", "true");
+            properties.setProperty("SSL", "false");
             return DriverManager.getConnection(jdbcUrl, properties);
         }
         catch (Exception e) {

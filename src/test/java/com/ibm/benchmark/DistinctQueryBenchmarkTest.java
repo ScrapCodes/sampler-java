@@ -20,7 +20,7 @@ public class DistinctQueryBenchmarkTest
     @Override
     String generateQuery()
     {
-        return queryGenerator.generateQuery(TPCHLineitem.class);
+        return queryGenerator.generateQuery(TPCHLineitem.class).replace(TPCHLineitem.class.getSimpleName(), tableName());
     }
 
     @Override
@@ -28,4 +28,6 @@ public class DistinctQueryBenchmarkTest
     {
         return "count_distinct_query";
     }
+
+
 }

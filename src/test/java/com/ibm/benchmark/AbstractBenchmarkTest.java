@@ -2,6 +2,7 @@ package com.ibm.benchmark;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
+import com.ibm.config.Config;
 import com.ibm.testbed.exporter.JdbcPrestoExporter;
 import com.ibm.testbed.importer.Importer;
 import com.ibm.testbed.importer.ImporterFactory;
@@ -48,27 +49,45 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public abstract class AbstractBenchmarkTest
 {
-    private static final String PRESTODB_JDBC_PATH = "jdbc:presto://127.0.0.1:8081/hive/tpch";
+    protected static final Config config = new Config();
+
+    static {
+        // JVM executes static function and blocks first.
+        // Since Junit4 mandates static for certain functions.
+        // This will ensure that config is loaded.
+        try {
+            config.loadViaJavaProperties();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static final Map<String, String> formatVsPathMap = new HashMap<>();
     private static final Map<String, Long> formatVsExpectedCountMap = new HashMap<>();
 
     private static final CustomLogger logger = new CustomLogger();
 
-    static final String DUCKDB_JDBC_PATH = "jdbc:duckdb:/tmp/test_bench_duckdb.db";
-    static final String SQLITE_JDBC_PATH = "jdbc:sqlite:/tmp/test_bench_sqlite.db";
-
-    private final String jdbcUrl;
-    private final String dbType;
-    private final String format;
+    protected final String jdbcUrl;
+    protected final String dbType;
+    protected final String format;
 
     public AbstractBenchmarkTest(String dbType, String jdbcUrl, String format)
     {
         try {
             synchronized (this) {
                 if (!formatVsPathMap.containsKey(format)) {
-                    String path = Files.createTempDirectory("presto_test_export").toFile().getAbsolutePath();
-                    formatVsExpectedCountMap.put(format, exportData(path, format, 2));
+                    String path = config.getConf(String.format("importer.source.%s.path", format.toLowerCase()));
+                    if (path == null) {
+                        path = Files.createTempDirectory(
+                                        config.getConfWithDefault("benchmark.export.path.prefix", "presto_test_export"))
+                                .toFile().getAbsolutePath();
+                        long recordCount = exportData(path, format, 2);
+                        config.setConf(String.format("importer.source.%s.count", format.toLowerCase()), recordCount);
+                    }
                     formatVsPathMap.put(format, path);
+                    long recordCount = Long.parseLong(config.getRequiredConf(String.format("importer.source.%s.count", format.toLowerCase())));
+                    formatVsExpectedCountMap.put(format, recordCount);
                 }
             }
             this.dbType = dbType;
@@ -83,6 +102,11 @@ public abstract class AbstractBenchmarkTest
     abstract String generateQuery();
 
     abstract String benchmarkName();
+
+    String tableName()
+    {
+        return config.getTableName(dbType);
+    }
 
     public long exportData(String path, String format, int samplePercent)
             throws SQLException
@@ -101,31 +125,34 @@ public abstract class AbstractBenchmarkTest
     public static Collection databasePaths()
     {
         return Arrays.asList(new String[][] {
-                {"sqlite", SQLITE_JDBC_PATH, "CSV"},
-                {"duckdb", DUCKDB_JDBC_PATH, "CSV"},
-                {"prestodb", PRESTODB_JDBC_PATH, "PARQUET"}});
+                {"sqlite", config.getRequiredConf("importer.sqlite.jdbcUrl"), "CSV"},
+                {"duckdb", config.getRequiredConf("importer.duckdb.jdbcUrl"), "CSV"},
+                {"prestodb", config.getRequiredConf("importer.prestodb.jdbcUrl"), "PARQUET"}});
     }
 
     @Test
     public void aImportData()
             throws SQLException, SamplerImportException
     {
+        String skip = config.getConf("importer.skip");
+        if (Objects.nonNull(skip) && Boolean.parseBoolean(skip)) {
+            return;
+        }
         Stopwatch sw = Stopwatch.createUnstarted();
         Importer importer = ImporterFactory.createInstance(dbType);
         sw.reset();
         String path = formatVsPathMap.get(format);
         long expectedCount = formatVsExpectedCountMap.get(format);
         try (Connection con = importer.getConnection(jdbcUrl)) {
-            String tableName = "TPCHLineitem";
             sw.start();
-            importer.importFile(con, path, format, tableName);
+            importer.importFile(con, path, format, tableName());
             sw.stop();
             logger.info("DbType: {}, Time to import {} records into '{}' : {}ms", dbType, expectedCount, jdbcUrl, sw.elapsed().toMillis());
             //logger.info("DbType: {}, Size of the db file after importing the dataset {} bytes", dbType, FileUtils.sizeOf(new File(jdbcUrl)));
-            PreparedStatement statement = con.prepareStatement(String.format("SELECT * FROM %s LIMIT 1", tableName)); // To verify imported table has all columns
+            PreparedStatement statement = con.prepareStatement(String.format("SELECT * FROM %s LIMIT 1", tableName())); // To verify imported table has all columns
             ResultSet resultSet = statement.executeQuery();
             assertEquals("Imported table has missing columns", 16, resultSet.getMetaData().getColumnCount());
-            statement = con.prepareStatement(String.format("SELECT count(*) FROM %s ", tableName));
+            statement = con.prepareStatement(String.format("SELECT count(*) FROM %s ", tableName()));
             resultSet = statement.executeQuery();
             assertTrue(resultSet.next());
             assertEquals("mismatch in number of rows exported and number of rows imported", resultSet.getLong(1), expectedCount);
@@ -235,6 +262,6 @@ public abstract class AbstractBenchmarkTest
         // cleanup each test
         logger.info("Cleaning up! {} and dbPath : {}", convertWithGuava(formatVsPathMap), jdbcUrl);
         // FileUtils.deleteDirectory(new File(path));
-        Files.deleteIfExists(Path.of(jdbcUrl));
+        // Files.deleteIfExists(Path.of(jdbcUrl));
     }
 }
