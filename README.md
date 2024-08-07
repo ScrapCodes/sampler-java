@@ -2,6 +2,28 @@
 
 ## Run tests
 
+### Add configuration for running the benchmark
+
+Modify sampler.properties file to reflect the correct values.
+```properties
+# Table imported data is written to.
+importer.prestodb.table=lineitem3
+importer.duckdb.table=lineitem3
+importer.sqlite.table=lineitem3
+
+# JDBC url
+importer.prestodb.jdbcUrl=jdbc:presto://127.0.0.1:8081/hive/tpch
+importer.duckdb.jdbcUrl=jdbc:duckdb:/tmp/test_bench_duckdb.db
+importer.sqlite.jdbcUrl=jdbc:sqlite:/tmp/test_bench_sqlitedb.db
+
+# Importer
+importer.source.parquet.path=/tmp/presto_test_export7612448730617712277
+importer.source.csv.path=/tmp/presto_test_export5567570570163389490
+importer.source.parquet.count=1200121
+importer.source.csv.count=1200028
+importer.skip=true
+```
+
 `mvn test`
 
 ## How the benchmark was run.
