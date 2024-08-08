@@ -53,7 +53,7 @@ public abstract class AbstractImporterTest
     }
 
     private synchronized void exportData()
-            throws SQLException
+            throws SQLException, IOException
     {
         Stopwatch sw = Stopwatch.createUnstarted();
         sw.start();

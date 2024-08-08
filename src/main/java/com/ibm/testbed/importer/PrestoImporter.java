@@ -1,5 +1,8 @@
 package com.ibm.testbed.importer;
 
+import com.ibm.config.Config;
+import org.checkerframework.checker.units.qual.C;
+
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
@@ -21,10 +24,12 @@ public class PrestoImporter
             throws SamplerImportException
     {
         try {
+            Config config = new Config();
+            config.loadViaJavaProperties();
             Properties properties = new Properties();
-            properties.setProperty("user", "presto");
-            properties.setProperty("password", "");
-            properties.setProperty("SSL", "false");
+            properties.setProperty("user", config.getConfWithDefault("importer.prestodb.access.user", "presto"));
+            properties.setProperty("password", config.getConfWithDefault("importer.prestodb.access.password", ""));
+            properties.setProperty("SSL", config.getConfWithDefault("importer.prestodb.access.ssl", "false"));
             return DriverManager.getConnection(jdbcUrl, properties);
         }
         catch (Exception e) {

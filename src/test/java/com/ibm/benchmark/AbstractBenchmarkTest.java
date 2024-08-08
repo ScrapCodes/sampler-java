@@ -7,19 +7,15 @@ import com.ibm.testbed.exporter.JdbcPrestoExporter;
 import com.ibm.testbed.importer.Importer;
 import com.ibm.testbed.importer.ImporterFactory;
 import com.ibm.testbed.importer.SamplerImportException;
-import org.apache.commons.io.FileUtils;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.MethodSorters;
 import org.junit.runners.Parameterized;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -29,10 +25,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -42,7 +36,6 @@ import java.util.stream.IntStream;
 
 import static com.google.common.math.Quantiles.percentiles;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -77,7 +70,7 @@ public abstract class AbstractBenchmarkTest
         try {
             synchronized (this) {
                 if (!formatVsPathMap.containsKey(format)) {
-                    String path = config.getConf(String.format("importer.source.%s.path", format.toLowerCase()));
+                    String path = config.get(String.format("importer.source.%s.path", format.toLowerCase()));
                     if (path == null) {
                         path = Files.createTempDirectory(
                                         config.getConfWithDefault("benchmark.export.path.prefix", "presto_test_export"))
@@ -109,7 +102,7 @@ public abstract class AbstractBenchmarkTest
     }
 
     public long exportData(String path, String format, int samplePercent)
-            throws SQLException
+            throws SQLException, IOException
     {
         Stopwatch sw = Stopwatch.createUnstarted();
         sw.start();
@@ -122,20 +115,27 @@ public abstract class AbstractBenchmarkTest
     }
 
     @Parameterized.Parameters
-    public static Collection databasePaths()
+    public static Collection<String[]> databasePaths()
     {
-        return Arrays.asList(new String[][] {
-                {"sqlite", config.getRequiredConf("importer.sqlite.jdbcUrl"), "CSV"},
-                {"duckdb", config.getRequiredConf("importer.duckdb.jdbcUrl"), "CSV"},
-                {"prestodb", config.getRequiredConf("importer.prestodb.jdbcUrl"), "PARQUET"}});
+        List<String> dbTypes = Arrays.asList("duckdb", "sqlite", "prestodb");
+        List<String[]> configList = new ArrayList<>();
+        for (String db : dbTypes) {
+            if (!config.getBoolean(String.format("tests.%s.skip", db))) {
+                String format = "CSV";
+                if (db.equalsIgnoreCase("prestodb")) {
+                    format = "PARQUET";
+                }
+                configList.add(new String[] {db, config.getRequiredConf(String.format("importer.%s.jdbc_url", db)), format});
+            }
+        }
+        return configList;
     }
 
     @Test
     public void aImportData()
             throws SQLException, SamplerImportException
     {
-        String skip = config.getConf("importer.skip");
-        if (Objects.nonNull(skip) && Boolean.parseBoolean(skip)) {
+        if (config.getBoolean("importer.import_data.skip")) {
             return;
         }
         Stopwatch sw = Stopwatch.createUnstarted();

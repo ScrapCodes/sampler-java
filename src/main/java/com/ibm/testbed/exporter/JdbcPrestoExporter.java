@@ -1,5 +1,8 @@
 package com.ibm.testbed.exporter;
 
+import com.ibm.config.Config;
+
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -13,14 +16,16 @@ import static com.ibm.testbed.Utils.createTable;
 public class JdbcPrestoExporter
 {
     public Connection getConnectionWithDefaults()
-            throws SQLException
+            throws SQLException, IOException
     {
-        String url = "jdbc:presto://localhost:8080/hive/tpch";
+        Config config = new Config();
+        config.loadViaJavaProperties();
+        String url = config.getRequiredConf("exporter.prestodb.jdbc_url");
         Properties properties = new Properties();
 
-        properties.setProperty("user", "presto");
-        properties.setProperty("password", "");
-        properties.setProperty("SSL", "false");
+        properties.setProperty("user", config.getConfWithDefault("exporter.prestodb.access.user", "presto"));
+        properties.setProperty("password", config.getConfWithDefault("exporter.prestodb.access.password", ""));
+        properties.setProperty("SSL", config.getConfWithDefault("exporter.prestodb.access.ssl", "false"));
         return DriverManager.getConnection(url, properties);
     }
 

@@ -15,6 +15,6 @@ public class ConfigTest
         Config config = new Config();
         System.out.println(config.javaConfigPropertiesPath);
         config.loadViaJavaProperties();
-        assertEquals("test", config.getConf("importer.source_schema"));
+        assertEquals("test", config.get("importer.source_schema"));
     }
 }

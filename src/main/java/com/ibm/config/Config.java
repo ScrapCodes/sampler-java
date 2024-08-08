@@ -22,8 +22,19 @@ public class Config
         appProps.setProperty(key, value.toString());
     }
 
+    public boolean contains(String key)
+    {
+        return Objects.nonNull(get(key));
+    }
+
+    public Boolean getBoolean(String key)
+    {
+
+        return contains(key) && Boolean.parseBoolean(get(key));
+    }
+
     // First priority to system properties.
-    public String getConf(String key)
+    public String get(String key)
     {
         if (Objects.nonNull(System.getProperty(key))) {
             return System.getProperty(key);
