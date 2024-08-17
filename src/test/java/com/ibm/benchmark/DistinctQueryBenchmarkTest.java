@@ -12,9 +12,9 @@ public class DistinctQueryBenchmarkTest
 {
     QueryGenerator queryGenerator = new DistinctQueryGenerator();
 
-    public DistinctQueryBenchmarkTest(String dbType, String dbPath, String format)
+    public DistinctQueryBenchmarkTest(String dbType, String dbPath, String format, String randomString)
     {
-        super(dbType, dbPath, format);
+        super(dbType, dbPath, format, randomString);
     }
 
     @Override
@@ -28,6 +28,4 @@ public class DistinctQueryBenchmarkTest
     {
         return "count_distinct_query";
     }
-
-
 }

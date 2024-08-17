@@ -12,9 +12,9 @@ public class JoinLikeQueryBenchmarkTest
 {
     QueryGenerator queryGenerator = new JoinQueryGenerator();
 
-    public JoinLikeQueryBenchmarkTest(String dbType, String dbPath, String format)
+    public JoinLikeQueryBenchmarkTest(String dbType, String dbPath, String format, String randomString)
     {
-        super(dbType, dbPath, format);
+        super(dbType, dbPath, format, randomString);
     }
 
     @Override

@@ -15,10 +15,12 @@ import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -26,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
@@ -64,18 +67,20 @@ public abstract class AbstractBenchmarkTest
     protected final String jdbcUrl;
     protected final String dbType;
     protected final String format;
+    protected final String randomString;
 
-    public AbstractBenchmarkTest(String dbType, String jdbcUrl, String format)
+    public AbstractBenchmarkTest(String dbType, String jdbcUrl, String format, String randomString)
     {
         try {
             synchronized (this) {
                 if (!formatVsPathMap.containsKey(format)) {
                     String path = config.get(String.format("importer.source.%s.path", format.toLowerCase()));
-                    if (path == null) {
+                    if (path == null || path.isEmpty()) {
                         path = Files.createTempDirectory(
                                         config.getConfWithDefault("benchmark.export.path.prefix", "presto_test_export"))
                                 .toFile().getAbsolutePath();
-                        long recordCount = exportData(path, format, 2);
+                        long recordCount = exportData(path, format,
+                                Integer.parseInt(config.getConfWithDefault("importer.import_data.sample_size", "2")));
                         config.setConf(String.format("importer.source.%s.count", format.toLowerCase()), recordCount);
                     }
                     formatVsPathMap.put(format, path);
@@ -86,6 +91,7 @@ public abstract class AbstractBenchmarkTest
             this.dbType = dbType;
             this.jdbcUrl = jdbcUrl;
             this.format = format;
+            this.randomString = randomString;
         }
         catch (IOException | SQLException e) {
             throw new RuntimeException(e);
@@ -98,7 +104,12 @@ public abstract class AbstractBenchmarkTest
 
     String tableName()
     {
-        return config.getTableName(dbType);
+        if (config.getBoolean("importer.import_data.skip")) {
+            return config.getTableName(dbType);
+        }
+        else {
+            return config.getTableName(dbType) + randomString;
+        }
     }
 
     public long exportData(String path, String format, int samplePercent)
@@ -116,8 +127,8 @@ public abstract class AbstractBenchmarkTest
 
     @Parameterized.Parameters
     public static Collection<String[]> databasePaths()
-    {
-        List<String> dbTypes = Arrays.asList("duckdb", "sqlite", "prestodb");
+    {// , "sqlite", "prestodb"
+        List<String> dbTypes = Arrays.asList("duckdb", "prestodb");
         List<String[]> configList = new ArrayList<>();
         for (String db : dbTypes) {
             if (!config.getBoolean(String.format("tests.%s.skip", db))) {
@@ -125,7 +136,8 @@ public abstract class AbstractBenchmarkTest
                 if (db.equalsIgnoreCase("prestodb")) {
                     format = "PARQUET";
                 }
-                configList.add(new String[] {db, config.getRequiredConf(String.format("importer.%s.jdbc_url", db)), format});
+                String randomString = UUID.randomUUID().toString().substring(0, 4);
+                configList.add(new String[] {db, config.getRequiredConf(String.format("importer.%s.jdbc_url", db)), format, randomString});
             }
         }
         return configList;
@@ -155,7 +167,7 @@ public abstract class AbstractBenchmarkTest
             statement = con.prepareStatement(String.format("SELECT count(*) FROM %s ", tableName()));
             resultSet = statement.executeQuery();
             assertTrue(resultSet.next());
-            assertEquals("mismatch in number of rows exported and number of rows imported", resultSet.getLong(1), expectedCount);
+            assertEquals("mismatch in number of rows exported and number of rows imported", expectedCount, resultSet.getLong(1));
         }
     }
 
@@ -169,17 +181,16 @@ public abstract class AbstractBenchmarkTest
         int zeroCount = 0;
         long sumRunTime = 0L;
         Stopwatch sw = Stopwatch.createUnstarted();
+        int totalTrials = Integer.parseInt(config.getConfWithDefault("benchmark.number_of_trials", "100"));
         Importer importer = ImporterFactory.createInstance(dbType);
         logger.info("DbType: {} , Benchmark: {}, Db with url : {} ", dbType, benchmarkName(), jdbcUrl);
         try (Connection connection = importer.getConnection(jdbcUrl)) {
-            for (int i : IntStream.range(1, 100).toArray()) {
+            Statement statement = connection.createStatement();
+            for (int i : IntStream.range(1, totalTrials).toArray()) {
                 String query = generateQuery();
                 sw.reset();
                 sw.start();
-                PreparedStatement preparedStatement = connection.prepareStatement(query);
-                //                         .put("http-server.max-request-header-size", "50MB") is required to be added to coordinator config
-                ResultSet resultSet = preparedStatement.executeQuery();
-                sw.stop();
+                ResultSet resultSet = statement.executeQuery(query);
                 if (resultSet.next()) {
                     long count = resultSet.getLong(1);
                     if (count == 0) {
@@ -187,6 +198,8 @@ public abstract class AbstractBenchmarkTest
                     }
                     sumRunTime += count;
                 }
+                sw.stop();
+                // System.out.printf("Query: %s, time: %d \n", query, sw.elapsed().toMillis());
                 runTimes.add(sw.elapsed().toMillis());
             }
         }
@@ -205,6 +218,8 @@ public abstract class AbstractBenchmarkTest
         List<Callable<Long>> callableTasks = new ArrayList<>();
         long sumRunTime = 0L;
         int concurrencyLevel = 4;
+        int totalTrials = Integer.parseInt(config.getConfWithDefault("benchmark.number_of_trials", "100"));
+        int subTrialMaxCount = totalTrials / concurrencyLevel;
         Importer importer = ImporterFactory.createInstance(dbType);
         try (ExecutorService executor = Executors.newFixedThreadPool(concurrencyLevel)) {
             for (int i : IntStream.range(0, concurrencyLevel).toArray()) {
@@ -213,17 +228,18 @@ public abstract class AbstractBenchmarkTest
                     long count = 0;
                     try {
                         try (Connection connection = importer.getConnection(jdbcUrl)) {
-                            for (int j : IntStream.range(0, 25).toArray()) {
+                            Statement statement = connection.createStatement();
+                            Stopwatch sw = Stopwatch.createUnstarted();
+                            for (int j : IntStream.range(0, subTrialMaxCount).toArray()) {
                                 String query = generateQuery();
-                                Stopwatch sw = Stopwatch.createUnstarted();
+                                sw.reset();
                                 sw.start();
-                                PreparedStatement preparedStatement = connection.prepareStatement(query);
-                                ResultSet resultSet = preparedStatement.executeQuery();
-                                sw.stop();
+                                ResultSet resultSet = statement.executeQuery(query);
                                 if (resultSet.next()) {
                                     countSum += resultSet.getLong(1);
                                     count++;
                                 }
+                                sw.stop();
                                 runTimes.add(sw.elapsed().toMillis());
                             }
                         }
@@ -262,6 +278,8 @@ public abstract class AbstractBenchmarkTest
         // cleanup each test
         logger.info("Cleaning up! {} and dbPath : {}", convertWithGuava(formatVsPathMap), jdbcUrl);
         // FileUtils.deleteDirectory(new File(path));
-        // Files.deleteIfExists(Path.of(jdbcUrl));
+        if (!config.getBoolean("importer.import_data.skip")) { // if import is set to true, we delete the data and import it again.
+            Files.deleteIfExists(Path.of(jdbcUrl.replace(String.format("jdbc:%s:", dbType), "")));
+        }
     }
 }

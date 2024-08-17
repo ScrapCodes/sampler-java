@@ -1,5 +1,6 @@
 package com.ibm.testbed.importer;
 
+import com.google.common.base.Preconditions;
 import com.ibm.testbed.Utils;
 import com.ibm.testbed.tables.TPCHLineitem;
 import com.opencsv.bean.CsvToBeanBuilder;
@@ -27,21 +28,22 @@ public class DuckDbImporter
     public void importFile(Connection conn, String path, String format, String tableName)
             throws SamplerImportException
     {
+        Preconditions.checkArgument(Files.isDirectory(Path.of(path)), "Path must be dir");
         try {
-            if (Files.isDirectory(Path.of(path))) {
-                path = path + "/*.gz";
-            }
             conn.setAutoCommit(false);
             Statement createStmt = conn.createStatement();
             createStmt.execute(Utils.createTable(tableName, false));
             String insertSelect = "";
             if (format.equalsIgnoreCase("parquet")) {
-                insertSelect = "INSERT INTO " + tableName + " SELECT * from read_parquet('" + path + "');";
+                Utils.deleteFilesByWildChar(path, ".*.crc");
+                insertSelect = "INSERT INTO " + tableName + " SELECT * from read_parquet('" + path + "/*');";
             }
             else if (format.equalsIgnoreCase("json")) {
+                path = path + "/*.gz";
                 insertSelect = "INSERT INTO " + tableName + " SELECT * from read_json('" + path + "');";
             }
             if (format.equalsIgnoreCase("csv")) {
+                path = path + "/*.gz";
                 insertSelect = "INSERT INTO " + tableName + " SELECT * FROM read_csv('" + path + "', header = false);";
             }
             PreparedStatement insertStmt = conn.prepareStatement(insertSelect);

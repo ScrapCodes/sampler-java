@@ -13,9 +13,9 @@ public class IsNullQueryBenchmarkTest
 {
     QueryGenerator queryGenerator = new IsNullQueryGenerator();
 
-    public IsNullQueryBenchmarkTest(String dbType, String dbPath, String format)
+    public IsNullQueryBenchmarkTest(String dbType, String dbPath, String format, String randomString)
     {
-        super(dbType, dbPath, format);
+        super(dbType, dbPath, format, randomString);
     }
 
     @Override

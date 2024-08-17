@@ -6,6 +6,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.FixMethodOrder;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
@@ -18,6 +19,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -30,6 +33,7 @@ public abstract class AbstractImporterTest
     long expectedCount;
 
     String dbPath;
+    String tableName;
 
     public AbstractImporterTest()
     {
@@ -37,6 +41,7 @@ public abstract class AbstractImporterTest
             path = Files.createTempDirectory("presto_test_export").toFile().getAbsolutePath();
             dbPath = String.format("/tmp/test_%s_%s.db", "n", getDbType());
             exportData();
+            tableName = "lineitem" + UUID.randomUUID().toString().substring(0, 4);
         }
         catch (IOException | SQLException e) {
             throw new RuntimeException(e);
@@ -73,20 +78,17 @@ public abstract class AbstractImporterTest
         Importer importer = ImporterFactory.createInstance(getDbType());
         String dbUrl = jdbcUrl();
         try (Connection con = importer.getConnection(jdbcUrl())) {
-            con.setAutoCommit(false);
-            String tableName = "TPCHLineitem";
             sw.start();
             importer.importFile(con, path, exportFormat(), tableName);
             sw.stop();
-            System.out.printf("\nTime to import %d records into %s at '%s' : %dms", expectedCount, tableName, dbUrl, sw.elapsed().toMillis());
+            System.out.printf("\nTime to import %d records into %s at '%s' : %dms\n", expectedCount, tableName, dbUrl, sw.elapsed().toMillis());
             if (Files.isReadable(Path.of(dbPath))) {
-                System.out.printf("\n Size of the %s db file after importing the dataset %d bytes", getDbType(), FileUtils.sizeOf(new File(dbPath)));
+                System.out.printf("\n Size of the %s db file after importing the dataset %d bytes\n", getDbType(), FileUtils.sizeOf(new File(dbPath)));
             }
-            PreparedStatement statement = con.prepareStatement(String.format("SELECT * FROM %s LIMIT 1", tableName)); // To verify imported table has all columns
-            ResultSet resultSet = statement.executeQuery();
+            Statement statement1 = con.createStatement();
+            ResultSet resultSet = statement1.executeQuery(String.format("SELECT * FROM %s LIMIT 1", tableName));
             assertEquals("Imported table has missing columns", 16, resultSet.getMetaData().getColumnCount());
-            statement = con.prepareStatement(String.format("SELECT count(*) FROM %s ", tableName));
-            resultSet = statement.executeQuery();
+            resultSet = statement1.executeQuery(String.format("SELECT count(*) FROM %s ", tableName));
             assertTrue(resultSet.next());
             assertEquals("mismatch in number of rows exported and number of rows imported", expectedCount, resultSet.getLong(1));
         }
