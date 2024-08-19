@@ -96,3 +96,11 @@ task.max-drivers-per-task=6
 max_split_preload_per_driver=25
 enable-serialized-page-checksum=false
 ```
+
+Configuration required on server:
+
+```properties
+hive.non-managed-table-writes-enabled=true
+http-server.max-request-header-size=5MB
+http-server.max-response-header-size=5MB
+```
